@@ -1,19 +1,37 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+IMPERIAL HYBRID VIEWER - OPTIMIZED EDITION
+Fixed version with proper error handling and fallback mechanisms
+"""
+
+import os
 import time
 import random
-import os
 import shutil
-import requests
-import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
+import tempfile
+import sys
+import socket
 
-# --- [ الإعدادات الأساسية ] ---
-TOR_PROXY = "socks5://127.0.0.1:9050"
+print("="*60)
+print("👑 IMPERIAL HYBRID VIEWER - OPTIMIZED EDITION")
+print("="*60)
 
-# --- [ قائمة الفيديوهات المدمجة ] ---
+# ==========================================
+# ⚙️ IMPERIAL CONFIGURATION
+# ==========================================
+DEVICES = [
+    {"name": "iPhone 16 Pro Max", "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "plat": "iPhone", "w": 430, "h": 932, "mobile": True},
+    {"name": "iPhone 15 Pro", "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1", "plat": "iPhone", "w": 393, "h": 852, "mobile": True},
+    {"name": "Samsung Galaxy S24 Ultra", "ua": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.64 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 384, "h": 854, "mobile": True},
+    {"name": "Samsung Galaxy S23 Ultra", "ua": "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 360, "h": 800, "mobile": True},
+    {"name": "Google Pixel 9 Pro", "ua": "Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro Build/AD1A.240530.019) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36", "plat": "Linux aarch64", "w": 412, "h": 915, "mobile": True},
+    {"name": "Huawei Mate 60 Pro", "ua": "Mozilla/5.0 (Linux; Android 12; ALN-AL00) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Mobile Safari/537.36", "plat": "Linux aarch64", "w": 412, "h": 915, "mobile": True},
+    {"name": "Xiaomi 14 Ultra", "ua": "Mozilla/5.0 (Linux; Android 14; 24030PN60G) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.119 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 393, "h": 873, "mobile": True},
+    {"name": "Windows 11 PC", "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", "plat": "Win32", "w": 1920, "h": 1080, "mobile": False},
+    {"name": "MacBook Pro (macOS)", "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36", "plat": "MacIntel", "w": 1440, "h": 900, "mobile": False}
+]
+
 VIDEOS_POOL = [
     {"id": "MrKhyV4Gcog", "keywords": "وش الحلم اللي حققته"},
     {"id": "bmgpC4lGSuQ", "keywords": "أجمل جزيرة في العالم سقطرى"},
@@ -21,129 +39,351 @@ VIDEOS_POOL = [
     {"id": "AvH9Ig3A0Qo", "keywords": "Socotra treasure island"}
 ]
 
-# --- [ مكتبة الأجهزة الحديثة ] ---
-DEVICES = [
-    {"name": "iPhone 16 Pro Max", "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "plat": "iPhone", "w": 430, "h": 932},
-    {"name": "iPhone 15 Pro", "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1", "plat": "iPhone", "w": 393, "h": 852},
-    {"name": "Samsung Galaxy S24 Ultra", "ua": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.64 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 384, "h": 854},
-    {"name": "Samsung Galaxy S23 Ultra", "ua": "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 360, "h": 800},
-    {"name": "Google Pixel 9 Pro", "ua": "Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro Build/AD1A.240530.019) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36", "plat": "Linux aarch64", "w": 412, "h": 915},
-    {"name": "Huawei Mate 60 Pro", "ua": "Mozilla/5.0 (Linux; Android 12; ALN-AL00) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Mobile Safari/537.36", "plat": "Linux aarch64", "w": 412, "h": 915},
-    {"name": "Xiaomi 14 Ultra", "ua": "Mozilla/5.0 (Linux; Android 14; 24030PN60G) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.119 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 393, "h": 873},
-    {"name": "Windows 11 PC", "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", "plat": "Win32", "w": 1920, "h": 1080},
-    {"name": "MacBook Pro (macOS)", "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36", "plat": "MacIntel", "w": 1440, "h": 900}
-]
-
-def get_current_ip():
-    """فحص الـ IP الحالي عبر بروكسي Tor"""
-    proxies = {'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050'}
-    try:
-        return requests.get('https://api.ipify.org', proxies=proxies, timeout=10).text
-    except:
-        return "Connection Error (Check Tor)"
-
-def inject_stealth_v2(driver, dev):
-    """حقن جافا سكربت لتزييف اللغة والوقت ومنع كشف البوت"""
-    # اختيار منطقة زمنية عشوائية عالمية لتضليل التتبع
-    timezones = ['America/New_York', 'Europe/London', 'Asia/Riyadh', 'Asia/Dubai', 'Europe/Paris']
-    tz = random.choice(timezones)
+# ==========================================
+# 🔧 SYSTEM SETUP
+# ==========================================
+def setup_environment():
+    """Setup Chrome and dependencies"""
+    print("🔧 Setting up environment...")
     
-    js_code = f"""
-    // تزييف لغات المتصفح
-    Object.defineProperty(navigator, 'languages', {{get: () => ['ar-SA', 'ar', 'en-US', 'en']}});
+    # Kill existing processes
+    os.system("pkill -f chrome 2>/dev/null || true")
+    time.sleep(2)
     
-    // تزييف المنصة (Platform)
-    Object.defineProperty(navigator, 'platform', {{get: () => '{dev["plat"]}'}});
+    # Check Chrome
+    chrome_path = None
+    possible_paths = [
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/chromium"
+    ]
     
-    // تزييف المنطقة الزمنية (Timezone)
-    Object.defineProperty(Intl.DateTimeFormat().resolvedOptions(), 'timeZone', {{value: '{tz}'}});
+    for path in possible_paths:
+        if os.path.exists(path):
+            chrome_path = path
+            print(f"✅ Chrome found: {chrome_path}")
+            break
     
-    // إخفاء سمات الأتمتة (WebDriver)
-    Object.defineProperty(navigator, 'webdriver', {{get: () => undefined}});
-    """
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": js_code})
-
-def run_advanced_session(session_num):
-    # اختيار عشوائي لجهاز وفيديو
-    dev = random.choice(DEVICES)
-    video_data = random.choice(VIDEOS_POOL)
-    current_ip = get_current_ip()
-    video_url = f"https://www.youtube.com/watch?v={video_data['id']}"
-
-    print(f"\n🚀 [الجلسة {session_num}] | الجهاز: {dev['name']}")
-    print(f"🌐 IP الحالي: {current_ip}")
-    print(f"🌐 Loading: {video_url}")
-
-    options = uc.ChromeOptions()
-    profile_dir = os.path.abspath(f"linux_profile_{session_num}")
-    
-    options.add_argument(f'--user-data-dir={profile_dir}')
-    options.add_argument(f'--user-agent={dev["ua"]}')
-    options.add_argument(f'--proxy-server={TOR_PROXY}')
-    options.add_argument(f"--window-size={dev['w']},{dev['h']}")
-    
-    options.add_argument('--headless') 
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-
-    driver = None
-    try:
-        driver = uc.Chrome(options=options, use_subprocess=True)
-        inject_stealth_v2(driver, dev)
-        wait = WebDriverWait(driver, 30)
-
-        # الدخول عبر البحث أولاً لزيادة المصداقية
-        driver.get("https://www.youtube.com")
-        time.sleep(random.randint(5, 8))
-
+    if not chrome_path:
+        print("❌ Chrome not found. Installing...")
         try:
-            search_box = wait.until(EC.element_to_be_clickable((By.NAME, "search_query")))
-            for char in video_data['keywords']:
-                search_box.send_keys(char)
-                time.sleep(random.uniform(0.1, 0.3))
-            search_box.send_keys(Keys.ENTER)
-            
-            video_link = wait.until(EC.element_to_be_clickable((By.XPATH, f"//a[contains(@href, '{video_data['id']}')]")))
-            video_link.click()
+            os.system("apt-get update && apt-get install -y wget")
+            os.system("wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb")
+            os.system("apt-get install -y /tmp/chrome.deb 2>/dev/null || dpkg -i /tmp/chrome.deb 2>/dev/null")
+            chrome_path = "/usr/bin/google-chrome"
+            print("✅ Chrome installed")
         except:
-            # الدخول المباشر في حال فشل البحث
-            driver.get(video_url)
+            print("⚠️ Chrome installation failed")
+            return None
+    
+    return chrome_path
 
-        # التحكم في المشاهدة والسرعة
-        wait.until(EC.presence_of_element_located((By.TAG_NAME, "video")))
-        video_element = driver.find_element(By.TAG_NAME, "video")
+# ==========================================
+# 🌍 TOR MANAGEMENT WITH FALLBACK
+# ==========================================
+def check_tor_connection():
+    """Check if TOR is available"""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        result = sock.connect_ex(("127.0.0.1", 9050))
+        sock.close()
         
-        initial_speed = random.choice([1.25, 1.5, 2.0])
-        driver.execute_script(f"arguments[0].playbackRate = {initial_speed};", video_element)
-        print(f"⚡ تم ضبط سرعة البدء على: {initial_speed}x")
+        if result == 0:
+            print("🌍 TOR proxy available on port 9050")
+            return True
+        else:
+            print("⚠️ TOR not available, using direct connection")
+            return False
+    except:
+        print("⚠️ TOR check failed, using direct connection")
+        return False
 
-        watch_duration = random.randint(70, 110)
-        print(f"⏳ مشاهدة مستمرة لمدة {watch_duration} ثانية...")
+# ==========================================
+# 🚀 BROWSER CREATION WITH FALLBACK
+# ==========================================
+def create_browser(device, use_tor):
+    """Create browser with fallback options"""
+    profile_dir = tempfile.mkdtemp(prefix="imperial_")
+    
+    try:
+        # Try to import selenium
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+        except ImportError:
+            print("📦 Installing selenium...")
+            os.system("pip install selenium > /dev/null 2>&1")
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
         
-        time.sleep(watch_duration // 3)
-        driver.execute_script(f"window.scrollBy(0, {random.randint(300, 700)});")
+        options = Options()
         
-        time.sleep(watch_duration // 3)
-        driver.execute_script("arguments[0].playbackRate = 1.0;", video_element)
-        print(f"🔄 إعادة السرعة لـ 1.0x لضمان احتساب المشاهدة")
-
-        time.sleep(watch_duration // 3)
-        print(f"✅ انتهت الجلسة بنجاح.")
-
+        # Basic options for stability
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--headless=new')
+        options.add_argument('--mute-audio')
+        options.add_argument(f'--user-data-dir={profile_dir}')
+        
+        # User agent
+        options.add_argument(f'--user-agent={device["ua"]}')
+        
+        # Window size
+        if not device['mobile']:
+            options.add_argument(f'--window-size={device["w"]},{device["h"]}')
+        
+        # Proxy (only if TOR is available)
+        if use_tor:
+            options.add_argument('--proxy-server=socks5://127.0.0.1:9050')
+        
+        # Anti-detection
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        
+        # Mobile emulation for mobile devices
+        if device['mobile']:
+            mobile_emulation = {
+                "deviceMetrics": {"width": device['w'], "height": device['h'], "pixelRatio": 3.0},
+                "userAgent": device['ua']
+            }
+            options.add_experimental_option("mobileEmulation", mobile_emulation)
+        
+        print(f"  🛠️ Creating browser for {device['name']}...")
+        
+        # Create driver
+        driver = webdriver.Chrome(options=options)
+        
+        # Set timeouts
+        driver.set_page_load_timeout(30)
+        
+        return driver, profile_dir
+        
     except Exception as e:
-        print(f"⚠️ خطأ أثناء الجلسة: {str(e)[:100]}")
-    finally:
-        if driver:
-            driver.quit()
-        if os.path.exists(profile_dir):
-            shutil.rmtree(profile_dir, ignore_errors=True)
+        print(f"  ❌ Browser creation failed: {e}")
+        return None, profile_dir
 
+# ==========================================
+# 📺 VIDEO PLAYBACK SYSTEM
+# ==========================================
+def play_and_watch_video(driver, video_id, session_num):
+    """Play video and watch for duration"""
+    try:
+        # Navigate to video
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        print(f"  🌐 Loading video {video_id}...")
+        
+        driver.get(url)
+        time.sleep(5)  # Wait for page load
+        
+        # Check if page loaded
+        page_title = driver.title
+        print(f"  📄 Page: {page_title[:50]}...")
+        
+        # Enhanced video playback script
+        playback_script = """
+        try {
+            // Find and play video
+            const videos = document.getElementsByTagName('video');
+            if (videos.length > 0) {
+                const video = videos[0];
+                video.muted = true;
+                video.playbackRate = 2.0;
+                
+                const playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('Video playing at 2x');
+                    }).catch(e => {
+                        console.log('Play error:', e);
+                    });
+                }
+                return true;
+            }
+            return false;
+        } catch(e) {
+            console.log('Player error:', e);
+            return false;
+        }
+        """
+        
+        # Execute playback
+        result = driver.execute_script(playback_script)
+        
+        if result:
+            print(f"  ✅ Video playing at 2x speed")
+        else:
+            print(f"  ⚠️ Video auto-play may need manual intervention")
+        
+        # Watch time
+        watch_time = random.randint(120, 300)  # 2-5 minutes
+        print(f"  ⏱️ Watching for {watch_time} seconds...")
+        
+        # Watch loop with interactions
+        start_time = time.time()
+        last_progress = 0
+        
+        while time.time() - start_time < watch_time:
+            elapsed = int(time.time() - start_time)
+            
+            # Show progress every 30 seconds
+            if elapsed >= last_progress + 30:
+                print(f"  📊 Progress: {elapsed}/{watch_time}s")
+                last_progress = elapsed
+                
+                # Random interaction
+                if random.random() < 0.3:  # 30% chance
+                    scroll_amount = random.randint(-100, 200)
+                    driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
+            
+            # Auto-skip ads
+            try:
+                driver.execute_script("""
+                    const skipBtn = document.querySelector('.ytp-ad-skip-button');
+                    if (skipBtn) skipBtn.click();
+                """)
+            except:
+                pass
+            
+            time.sleep(1)
+        
+        print(f"  ✅ Session {session_num} completed")
+        return True
+        
+    except Exception as e:
+        print(f"  ❌ Video playback error: {str(e)[:80]}")
+        return False
+
+# ==========================================
+# 📊 STATISTICS TRACKING
+# ==========================================
+class SessionStats:
+    def __init__(self):
+        self.total_sessions = 0
+        self.successful_sessions = 0
+        self.failed_sessions = 0
+        self.start_time = time.time()
+    
+    def add_session(self, success):
+        self.total_sessions += 1
+        if success:
+            self.successful_sessions += 1
+        else:
+            self.failed_sessions += 1
+    
+    def print_stats(self):
+        elapsed = time.time() - self.start_time
+        if self.total_sessions > 0:
+            success_rate = (self.successful_sessions / self.total_sessions) * 100
+        else:
+            success_rate = 0
+        
+        print(f"\n📊 Statistics: {self.successful_sessions}/{self.total_sessions} successful ({success_rate:.1f}%)")
+        print(f"⏱️ Elapsed: {elapsed//60:.0f}m {elapsed%60:.0f}s")
+
+# ==========================================
+# 🚀 MAIN EXECUTION
+# ==========================================
+def main():
+    """Main execution function"""
+    
+    # Setup Chrome
+    chrome_path = setup_environment()
+    if not chrome_path:
+        print("❌ Cannot continue without Chrome")
+        return
+    
+    # Check TOR
+    use_tor = check_tor_connection()
+    
+    # Statistics
+    stats = SessionStats()
+    
+    print(f"\n🎯 Starting Imperial viewing sessions")
+    print(f"🌍 TOR enabled: {use_tor}")
+    print(f"📱 Devices available: {len(DEVICES)}")
+    print(f"📺 Videos in pool: {len(VIDEOS_POOL)}")
+    print("\nPress Ctrl+C to stop\n")
+    
+    session_num = 1
+    
+    try:
+        while True:
+            print(f"\n{'='*50}")
+            print(f"🚀 IMPERIAL SESSION #{session_num}")
+            print(f"{'='*50}")
+            
+            # Select device and video
+            device = random.choice(DEVICES)
+            video = random.choice(VIDEOS_POOL)
+            
+            print(f"📱 Device: {device['name']}")
+            print(f"📺 Video: {video['keywords']}")
+            
+            # Create browser
+            driver, profile_dir = create_browser(device, use_tor)
+            
+            success = False
+            if driver:
+                try:
+                    # Play and watch video
+                    success = play_and_watch_video(driver, video['id'], session_num)
+                finally:
+                    # Cleanup
+                    try:
+                        driver.quit()
+                    except:
+                        pass
+                    
+                    if os.path.exists(profile_dir):
+                        shutil.rmtree(profile_dir, ignore_errors=True)
+            else:
+                print("  ❌ Skipping session due to browser failure")
+            
+            # Update statistics
+            stats.add_session(success)
+            stats.print_stats()
+            
+            session_num += 1
+            
+            # Cooldown before next session
+            if success:
+                cooldown = random.randint(10, 20)
+            else:
+                cooldown = random.randint(5, 10)
+            
+            print(f"\n⏳ Next session in {cooldown} seconds...")
+            time.sleep(cooldown)
+    
+    except KeyboardInterrupt:
+        print("\n\n🛑 Stopped by user")
+    
+    # Final statistics
+    print("\n" + "="*60)
+    print("📊 FINAL STATISTICS")
+    print("="*60)
+    print(f"Total sessions: {stats.total_sessions}")
+    print(f"Successful: {stats.successful_sessions}")
+    print(f"Failed: {stats.failed_sessions}")
+    
+    if stats.total_sessions > 0:
+        success_rate = (stats.successful_sessions / stats.total_sessions) * 100
+        print(f"Success rate: {success_rate:.1f}%")
+    
+    elapsed = time.time() - stats.start_time
+    print(f"Total time: {elapsed//60:.0f}m {elapsed%60:.0f}s")
+    print("="*60)
+    print("\n👑 Imperial mission complete!")
+
+# ==========================================
+# ENTRY POINT
+# ==========================================
 if __name__ == "__main__":
-    os.system("pkill -f chrome")
-    print("🔥 بدأ السكربت المحسن للعمل على Linux...")
-    for i in range(1, 1001):
-        run_advanced_session(i)
-        delay = random.randint(5, 15)
-        print(f"💤 انتظار {delay} ثانية قبل الجلسة القادمة...")
-        time.sleep(delay)
+    try:
+        main()
+    except Exception as e:
+        print(f"\n❌ Critical error: {e}")
+        print("Please check your Chrome installation and try again.")
