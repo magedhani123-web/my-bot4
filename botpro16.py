@@ -1,39 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-👑 ULTIMATE IMPERIAL VIEWER - MILLION SESSIONS EDITION (UPDATED)
-الميزات المضافة: التحكم في الصوت، بطارية مخصصة، تخطي شاشة الموافقة، ومشاهدة مقترحة 20 ثانية.
-"""
 
 import os
 import time
 import random
 import shutil
 import tempfile
-import sys
+import socket
 import requests
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 
 # ==========================================
-# ⚙️ الإعدادات الكبرى
+# ⚙️ الإعدادات الكبرى (تطابق كامل مع IP TOR + تزييف RAM/CPU)
 # ==========================================
 MAX_SESSIONS = 1000000 
 TOR_PROXY = "socks5://127.0.0.1:9050"
+TOR_CONTROL_PORT = 9051
+MAX_WORKERS = 1 
 
 DEVICES = [
-    {"name": "iPhone 16 Pro Max", "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "plat": "iPhone", "w": 430, "h": 932, "mobile": True},
-    {"name": "iPhone 15 Pro", "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1", "plat": "iPhone", "w": 393, "h": 852, "mobile": True},
-    {"name": "Samsung Galaxy S24 Ultra", "ua": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.64 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 384, "h": 854, "mobile": True},
-    {"name": "Samsung Galaxy S23 Ultra", "ua": "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 360, "h": 800, "mobile": True},
-    {"name": "Google Pixel 9 Pro", "ua": "Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro Build/AD1A.240530.019) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36", "plat": "Linux aarch64", "w": 412, "h": 915, "mobile": True},
-    {"name": "Huawei Mate 60 Pro", "ua": "Mozilla/5.0 (Linux; Android 12; ALN-AL00) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Mobile Safari/537.36", "plat": "Linux aarch64", "w": 412, "h": 915, "mobile": True},
-    {"name": "Xiaomi 14 Ultra", "ua": "Mozilla/5.0 (Linux; Android 14; 24030PN60G) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.119 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 393, "h": 873, "mobile": True},
-    {"name": "Windows 11 PC", "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", "plat": "Win32", "w": 1920, "h": 1080, "mobile": False},
-    {"name": "MacBook Pro (macOS)", "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36", "plat": "MacIntel", "w": 1440, "h": 900, "mobile": False}
+    {"name": "iPhone 16 Pro Max", "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "plat": "iPhone", "w": 430, "h": 932, "gpu": "Apple GPU"},
+    {"name": "iPhone 15 Pro", "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1", "plat": "iPhone", "w": 393, "h": 852, "gpu": "Apple GPU"},
+    {"name": "Samsung Galaxy S24 Ultra", "ua": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.64 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 384, "h": 854, "gpu": "Adreno 750"},
+    {"name": "Samsung Galaxy S23 Ultra", "ua": "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 360, "h": 800, "gpu": "Adreno 740"},
+    {"name": "Google Pixel 9 Pro", "ua": "Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro Build/AD1A.240530.019) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36", "plat": "Linux aarch64", "w": 412, "h": 915, "gpu": "Mali-G715"},
+    {"name": "Huawei Mate 60 Pro", "ua": "Mozilla/5.0 (Linux; Android 12; ALN-AL00) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Mobile Safari/537.36", "plat": "Linux aarch64", "w": 412, "h": 915, "gpu": "Mali-G710"},
+    {"name": "Xiaomi 14 Ultra", "ua": "Mozilla/5.0 (Linux; Android 14; 24030PN60G) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.119 Mobile Safari/537.36", "plat": "Linux armv8l", "w": 393, "h": 873, "gpu": "Adreno 750"},
+    {"name": "Windows 11 PC", "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", "plat": "Win32", "w": 1920, "h": 1080, "gpu": "NVIDIA RTX 4090"},
+    {"name": "MacBook Pro (macOS)", "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36", "plat": "MacIntel", "w": 1440, "h": 900, "gpu": "Apple M3"}
 ]
 
 VIDEOS_POOL = [
@@ -43,120 +42,148 @@ VIDEOS_POOL = [
     {"id": "AvH9Ig3A0Qo", "keywords": "Socotra treasure island"}
 ]
 
-def show_current_ip():
+def renew_tor_ip():
+    try:
+        with socket.create_connection(("127.0.0.1", TOR_CONTROL_PORT)) as sig:
+            sig.send(b'AUTHENTICATE ""\r\nSIGNAL NEWNYM\r\n')
+            time.sleep(5)
+    except: pass
+
+def get_current_ip():
     try:
         proxies = {'http': TOR_PROXY, 'https': TOR_PROXY}
-        ip = requests.get('https://api.ipify.org', proxies=proxies, timeout=15).text
-        print(f"🌍 IP النشط حالياً: {ip}")
-        return ip
-    except:
-        return None
+        r = requests.get('https://api.ipify.org?format=json', proxies=proxies, timeout=15).json()
+        return r['ip']
+    except: return "Unknown"
 
-def apply_advanced_stealth(driver, device):
-    # تحسين البطارية حسب القيم المطلوبة بالضبط
-    batt_level = random.choice([1.0, 0.45, 0.78, 0.34, 0.62, 0.80, 0.25])
-    net_speed = random.choice([15, 30, 50, 100])
-    lat, lon = random.uniform(24.0, 48.0), random.uniform(35.0, 58.0)
+def get_geo_data():
+    try:
+        proxies = {'http': TOR_PROXY, 'https': TOR_PROXY}
+        return requests.get('http://ip-api.com/json/', proxies=proxies, timeout=15).json()
+    except: return None
+
+def apply_stealth_js(driver, device, geo):
+    cpu_cores = random.choice([2, 4, 6, 8, 12])
+    ram_gb = random.choice([4, 8, 12, 16, 32])
+    batt_level = round(random.uniform(0.15, 0.98), 2)
+    is_charging = random.choice(["true", "false"])
+    lang = geo['countryCode'].lower() if geo else "en"
+    tz = geo['timezone'] if geo else "UTC"
+    lat = geo['lat'] if geo else 0.0
+    lon = geo['lon'] if geo else 0.0
     
-    js = f"""
-    Object.defineProperty(navigator, 'webdriver', {{get: () => undefined}});
+    js_code = f"""
+    Object.defineProperty(navigator, 'hardwareConcurrency', {{get: () => {cpu_cores}}});
+    Object.defineProperty(navigator, 'deviceMemory', {{get: () => {ram_gb}}});
+    const getParam = WebGLRenderingContext.prototype.getParameter;
+    WebGLRenderingContext.prototype.getParameter = function(p) {{
+        if (p === 37445) return 'Google Inc. (NVIDIA)';
+        if (p === 37446) return '{device["gpu"]}';
+        return getParam.apply(this, arguments);
+    }};
     if (navigator.getBattery) {{
         navigator.getBattery = () => Promise.resolve({{
-            charging: true, level: {batt_level}, chargingTime: 0, dischargingTime: Infinity
+            charging: {is_charging}, level: {batt_level}, chargingTime: 0, dischargingTime: Infinity
         }});
     }}
-    Object.defineProperty(navigator, 'connection', {{
-        get: () => ({{ effectiveType: '4g', downlink: {net_speed}, rtt: 50 }})
+    Object.defineProperty(navigator, 'language', {{get: () => '{lang}-{lang.upper()}'}});
+    Object.defineProperty(navigator, 'languages', {{get: () => ['{lang}-{lang.upper()}', '{lang}']}});
+    if (Intl) {{
+        Intl.DateTimeFormat.prototype.resolvedOptions = function() {{
+            return {{ timeZone: '{tz}', calendar: 'gregory', numberingSystem: 'latn', locale: '{lang}-{lang.upper()}' }};
+        }};
+    }}
+    navigator.geolocation.getCurrentPosition = (success) => success({{
+        coords: {{ latitude: {lat}, longitude: {lon}, accuracy: 100 }}
     }});
-    navigator.geolocation.getCurrentPosition = (s) => s({{ coords: {{ latitude: {lat}, longitude: {lon}, accuracy: 10 }} }});
+    Object.defineProperty(navigator, 'platform', {{get: () => '{device["plat"]}'}});
+    Object.defineProperty(navigator, 'webdriver', {{get: () => undefined}});
     """
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": js})
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": js_code})
 
 def run_session(session_num):
+    # تنظيف أي عمليات عالقة قبل البدء
     os.system("pkill -f chrome 2>/dev/null || true")
+    os.system("pkill -f chromedriver 2>/dev/null || true")
+    
+    renew_tor_ip()
+    current_ip = get_current_ip()
+    geo = get_geo_data()
     device = random.choice(DEVICES)
     video = random.choice(VIDEOS_POOL)
     
-    print(f"\n🚀 الجلسة الإمبراطورية #{session_num}")
-    show_current_ip()
+    print(f"\n🚀 جلسة #{session_num} | IP: {current_ip} ({geo['country'] if geo else 'Unknown'})")
+    print(f"💻 جهاز: {device['name']} | لغة: {geo['countryCode'] if geo else '??'} | توقيت: {geo['timezone'] if geo else '??'}")
     
-    profile_dir = tempfile.mkdtemp(prefix="imperial_")
+    # تحويل مسار المجلد المؤقت إلى مسار مطلق لضمان الصلاحيات
+    profile_dir = os.path.abspath(f"imp_final_profile_{random.randint(1000, 9999)}")
+    
     options = uc.ChromeOptions()
     options.add_argument(f'--user-data-dir={profile_dir}')
     options.add_argument(f'--user-agent={device["ua"]}')
     options.add_argument(f'--proxy-server={TOR_PROXY}')
     options.add_argument(f"--window-size={device['w']},{device['h']}")
+    
+    # الإعدادات لضمان التشغيل في بيئة Linux/GitHub
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--mute-audio')
+    # تعيين منفذ التصحيح
+    options.add_argument('--remote-debugging-port=9222')
 
     try:
+        # التشغيل باستخدام subprocess=True
         driver = uc.Chrome(options=options, use_subprocess=True)
-        apply_advanced_stealth(driver, device)
+        apply_stealth_js(driver, device, geo)
         wait = WebDriverWait(driver, 30)
 
-        # 1. تخطي شاشة الموافقة (Consent Screen Bypass)
         driver.get("https://www.youtube.com")
-        time.sleep(5)
+        time.sleep(random.randint(5, 8))
+        
         try:
-            # البحث عن أزرار الموافقة في نافذة الكوكيز (كما في صورك)
-            consent_btns = driver.find_elements(By.XPATH, "//button[contains(.,'Accept all') or contains(.,'موافق') or contains(.,'I agree')]")
-            if consent_btns:
-                consent_btns[0].click()
-                print("🛡️ تم تخطي شاشة الموافقة بنجاح.")
-        except: pass
-
-        # 2. البحث والتشغيل
-        try:
-            search_box = wait.until(EC.presence_of_element_located((By.NAME, "search_query")))
+            btns = driver.find_elements(By.XPATH, "//button[contains(.,'Accept') or contains(.,'Agree') or contains(.,'موافق')]")
+            if btns: btns[0].click()
+            search_box = wait.until(EC.element_to_be_clickable((By.NAME, "search_query")))
             for char in video['keywords']:
                 search_box.send_keys(char)
-                time.sleep(0.1)
+                time.sleep(random.uniform(0.1, 0.3))
             search_box.send_keys(Keys.ENTER)
-            video_el = wait.until(EC.element_to_be_clickable((By.XPATH, f"//a[contains(@href, '{video['id']}')]")))
-            video_el.click()
+            target_video = wait.until(EC.element_to_be_clickable((By.XPATH, f"//a[contains(@href, '{video['id']}')]")))
+            target_video.click()
         except:
             driver.get(f"https://www.youtube.com/watch?v={video['id']}")
 
-        # 3. فتح الصوت وتشغيل الفيديو
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "video")))
-        # تفعيل الصوت عند البدء
-        driver.execute_script("document.querySelector('video').muted = false; document.querySelector('video').volume = 0.5;")
-        print("🔊 تم فتح الصوت للجلسة الحالية.")
+        driver.execute_script("document.querySelector('video').playbackRate = 1.0; document.querySelector('video').play();")
         
-        speed = random.choice([1.25, 1.5, 2.0])
-        driver.execute_script(f"document.querySelector('video').playbackRate = {speed};")
-        driver.execute_script("document.querySelector('video').play();")
-
-        # 4. المشاهدة
-        watch_time = random.randint(110, 180)
-        time.sleep(watch_time)
+        time.sleep(random.randint(10, 20))
+        driver.execute_script(f"window.scrollBy(0, {random.randint(300, 700)});")
         
-        # كتم الصوت عند الانتهاء من الفيديو الأساسي
-        driver.execute_script("document.querySelector('video').muted = true;")
-        print("🔇 تم كتم الصوت بعد انتهاء المشاهدة الأساسية.")
-
-        # 5. مشاهدة فيديو مقترح لمدة 20 ثانية بالضبط
-        print("🔗 الانتقال لمشاهدة فيديو مقترح لـ 20 ثانية...")
+        watch_duration = random.randint(120, 180)
+        time.sleep(watch_duration)
+        
         try:
-            suggestions = driver.find_elements(By.CSS_SELECTOR, "a.ytd-thumbnail, a.yt-simple-endpoint.inline-block.ytd-thumbnail")
+            suggestions = driver.find_elements(By.CSS_SELECTOR, "a#thumbnail, a.ytd-thumbnail")
             if suggestions:
-                suggestions[0].click()
-                time.sleep(20) # مدة المشاهدة المطلوبة للفيديو المقترح
-                print("✅ اكتملت مشاهدة الفيديو المقترح.")
+                random.choice(suggestions[:5]).click()
+                time.sleep(random.randint(15, 20))
         except: pass
 
-        print(f"✅ اكتملت الجلسة {session_num} بنجاح.")
-        driver.quit()
-
+        print(f"✅ اكتملت الجلسة بنجاح.")
     except Exception as e:
-        print(f"❌ تعثرت الجلسة: {str(e)[:50]}")
+        print(f"❌ خطأ: {str(e)[:50]}")
     finally:
+        try:
+            driver.quit()
+        except: pass
         if os.path.exists(profile_dir):
             shutil.rmtree(profile_dir, ignore_errors=True)
 
 if __name__ == "__main__":
     for i in range(1, MAX_SESSIONS + 1):
         run_session(i)
-        time.sleep(random.randint(5, 10))
-        if os.path.exists("stop.txt"): break
+        wait_gap = random.randint(15, 45)
+        print(f"⏳ انتظار {wait_gap} ثانية...")
+        time.sleep(wait_gap)
