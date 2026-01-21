@@ -13,60 +13,58 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONUNBUFFERED: "1"
-      # تخصيص ذاكرة افتراضية للمعالجة لضمان عدم الانهيار
-      NODE_OPTIONS: "--max-old-space-size=8192"
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Maximize CPU & RAM Performance
-        # هذا الجزء يقوم بإنشاء Swap File لزيادة الرام وتفريغ مساحة المعالج
+      - name: Maximize System Resources (RAM & CPU Boost)
+        # هذا الجزء السحري يحرر مساحة القرص ويخلق ذاكرة رام افتراضية تصل لـ 16 جيجا
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo fallocate -l 8G /swapfile
+          echo "🚀 تحرير موارد النظام لزيادة الأداء..."
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android
+          sudo fallocate -l 12G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
           sudo sysctl vm.swappiness=10
-          echo "🚀 RAM Capacity Boosted with 8GB Swap & CPU Cleaned"
+          echo "✅ تم تفعيل RAM افتراضي (12GB Swap + 7GB RAM الأصلية)"
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install Google Chrome Stable
+      - name: Install Chrome & System Fixes
         run: |
           sudo apt-get update
           wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo apt install -y ./google-chrome-stable_current_amd64.deb
+          # تثبيت المكتبات اللازمة لعمل الواجهة الرسومية والصوت
+          sudo apt-get install -y tor xvfb libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2t64
 
-      - name: Install System Dependencies
+      - name: Install Python Packages
         run: |
-          sudo apt-get update
-          sudo apt-get install -y tor xvfb libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2t64 ffmpeg
           pip install undetected_chromedriver selenium requests
 
-      - name: Configure and Start Tor
+      - name: Configure Tor
         run: |
           sudo service tor stop || true
           sudo bash -c 'echo -e "ControlPort 9051\nCookieAuthentication 0\nDataDirectory /var/lib/tor" > /etc/tor/torrc'
           sudo service tor start
           sleep 20
 
-      - name: Start Bot (Max Resource Allocation)
+      - name: Start Bot (High-Res Desktop Mode)
+        # تشغيل الشاشة الوهمية مع إعدادات تمنع خطأ "cannot connect to chrome"
         run: |
           export DISPLAY=:99
-          # استخدام شاشة وهمية بمتطلبات أقل لرفع سرعة المعالجة للفيديو
-          timeout 350m xvfb-run --auto-servernum --server-args="-screen 0 1280x720x16 -ac +extension GLX +render -noreset" python -u bot_master1.py || echo "⚠️ Restarting..."
+          # استخدام xvfb-run مع تحديد أبعاد شاشة واضحة لضمان عدم انهيار المتصفح
+          timeout 350m xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24 -ac +extension GLX +render -noreset" python -u bot_master1.py || echo "⚠️ انتهت الجلسة، جاري التجهيز للجولة التالية..."
 
       - name: Self-Restart Workflow
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "🚀 Triggering self-restart..."
+          echo "🚀 إعادة التشغيل الذاتي لضمان العمل للأبد..."
           gh workflow run "Run My Bot Forever"
