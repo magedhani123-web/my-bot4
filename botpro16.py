@@ -62,19 +62,21 @@ def get_geo_data():
         return requests.get('http://ip-api.com/json/', proxies=proxies, timeout=15).json()
     except: return None
 
-def apply_stealth_js(driver, device, geo):
-    cpu_cores = random.choice([2, 4, 6, 8, 12])
-    ram_gb = random.choice([4, 8, 12, 16, 32])
-    batt_level = round(random.uniform(0.15, 0.98), 2)
-    is_charging = random.choice(["true", "false"])
+def apply_stealth_js(driver, device, geo, extra_data):
+    # استخدام البيانات العشوائية التي تم إنشاؤها للجلسة
+    cpu = extra_data['cpu']
+    ram = extra_data['ram']
+    batt = extra_data['batt']
+    charging = extra_data['charging']
+    
     lang = geo['countryCode'].lower() if geo else "en"
     tz = geo['timezone'] if geo else "UTC"
     lat = geo['lat'] if geo else 0.0
     lon = geo['lon'] if geo else 0.0
     
     js_code = f"""
-    Object.defineProperty(navigator, 'hardwareConcurrency', {{get: () => {cpu_cores}}});
-    Object.defineProperty(navigator, 'deviceMemory', {{get: () => {ram_gb}}});
+    Object.defineProperty(navigator, 'hardwareConcurrency', {{get: () => {cpu}}});
+    Object.defineProperty(navigator, 'deviceMemory', {{get: () => {ram}}});
     const getParam = WebGLRenderingContext.prototype.getParameter;
     WebGLRenderingContext.prototype.getParameter = function(p) {{
         if (p === 37445) return 'Google Inc. (NVIDIA)';
@@ -83,7 +85,7 @@ def apply_stealth_js(driver, device, geo):
     }};
     if (navigator.getBattery) {{
         navigator.getBattery = () => Promise.resolve({{
-            charging: {is_charging}, level: {batt_level}, chargingTime: 0, dischargingTime: Infinity
+            charging: {charging}, level: {batt}, chargingTime: 0, dischargingTime: Infinity
         }});
     }}
     Object.defineProperty(navigator, 'language', {{get: () => '{lang}-{lang.upper()}'}});
@@ -102,7 +104,6 @@ def apply_stealth_js(driver, device, geo):
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": js_code})
 
 def run_session(session_num):
-    # تنظيف أي عمليات عالقة قبل البدء
     os.system("pkill -f chrome 2>/dev/null || true")
     os.system("pkill -f chromedriver 2>/dev/null || true")
     
@@ -112,31 +113,36 @@ def run_session(session_num):
     device = random.choice(DEVICES)
     video = random.choice(VIDEOS_POOL)
     
+    # توليد بيانات العتاد والبطارية للجلسة الحالية للطباعة والحقن
+    session_data = {
+        "cpu": random.choice([2, 4, 6, 8, 12]),
+        "ram": random.choice([4, 8, 12, 16, 32]),
+        "batt": round(random.uniform(0.15, 0.98), 2),
+        "charging": random.choice(["true", "false"])
+    }
+    
+    # عرض البيانات المطلوبة في الكونسول كما طلبت
     print(f"\n🚀 جلسة #{session_num} | IP: {current_ip} ({geo['country'] if geo else 'Unknown'})")
     print(f"💻 جهاز: {device['name']} | لغة: {geo['countryCode'] if geo else '??'} | توقيت: {geo['timezone'] if geo else '??'}")
-    
-    # تحويل مسار المجلد المؤقت إلى مسار مطلق لضمان الصلاحيات
-    profile_dir = os.path.abspath(f"imp_final_profile_{random.randint(1000, 9999)}")
-    
+    print(f"🔋 بطارية: {int(session_data['batt']*100)}% | شحن: {session_data['charging']} | معالج: {session_data['cpu']} Cores | رام: {session_data['ram']}GB")
+    print(f"📍 GPS: Lat {geo['lat'] if geo else 0} | Lon {geo['lon'] if geo else 0}")
+
+    profile_dir = os.path.abspath(f"profile_session_{random.randint(1000, 9999)}")
     options = uc.ChromeOptions()
     options.add_argument(f'--user-data-dir={profile_dir}')
     options.add_argument(f'--user-agent={device["ua"]}')
     options.add_argument(f'--proxy-server={TOR_PROXY}')
     options.add_argument(f"--window-size={device['w']},{device['h']}")
-    
-    # الإعدادات لضمان التشغيل في بيئة Linux/GitHub
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     options.add_argument('--mute-audio')
-    # تعيين منفذ التصحيح
-    options.add_argument('--remote-debugging-port=9222')
 
+    driver = None
     try:
-        # التشغيل باستخدام subprocess=True
         driver = uc.Chrome(options=options, use_subprocess=True)
-        apply_stealth_js(driver, device, geo)
+        apply_stealth_js(driver, device, geo, session_data)
         wait = WebDriverWait(driver, 30)
 
         driver.get("https://www.youtube.com")
@@ -158,26 +164,14 @@ def run_session(session_num):
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "video")))
         driver.execute_script("document.querySelector('video').playbackRate = 1.0; document.querySelector('video').play();")
         
-        time.sleep(random.randint(10, 20))
-        driver.execute_script(f"window.scrollBy(0, {random.randint(300, 700)});")
+        time.sleep(random.randint(120, 180))
+        print(f"✅ اكتملت الجلسة بتطابق كامل للبيانات.")
         
-        watch_duration = random.randint(120, 180)
-        time.sleep(watch_duration)
-        
-        try:
-            suggestions = driver.find_elements(By.CSS_SELECTOR, "a#thumbnail, a.ytd-thumbnail")
-            if suggestions:
-                random.choice(suggestions[:5]).click()
-                time.sleep(random.randint(15, 20))
-        except: pass
-
-        print(f"✅ اكتملت الجلسة بنجاح.")
     except Exception as e:
         print(f"❌ خطأ: {str(e)[:50]}")
     finally:
-        try:
+        if driver:
             driver.quit()
-        except: pass
         if os.path.exists(profile_dir):
             shutil.rmtree(profile_dir, ignore_errors=True)
 
